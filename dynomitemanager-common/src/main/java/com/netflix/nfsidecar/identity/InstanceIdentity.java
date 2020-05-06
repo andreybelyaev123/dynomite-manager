@@ -18,6 +18,7 @@ package com.netflix.nfsidecar.identity;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -205,9 +206,23 @@ public class InstanceIdentity {
                 replacedIp = dead.getHostIP();
                 String payLoad = dead.getToken();
                 logger.info("Trying to grab slot {} with availability zone {}", dead.getId(), dead.getZone());
-                return factory.create(envVariables.getDynomiteClusterName(), dead.getId(), retriever.getInstanceId(),
-                        retriever.getPublicHostname(), retriever.getPublicIP(), retriever.getRac(), dead.getVolumes(),
-                        payLoad, envVariables.getRack());
+                AppsInstance ins = new AppsInstance();
+                ins.setApp(dead.getApp());
+                ins.setZone(dead.getZone());
+                ins.setRack(dead.getRack());
+                ins.setHost(retriever.getPublicHostname());
+                ins.setDynomitePort(commonConfig.getDynomitePort());
+                ins.setDynomiteSecurePort(commonConfig.getDynomiteSecurePort());
+                ins.setDynomiteSecureStoragePort(commonConfig.getDynomiteSecureStoragePort());
+                ins.setPeerPort(commonConfig.getDynomitePeerPort());
+                ins.setHostIP(retriever.getPublicIP());
+                ins.setId(dead.getId());
+                ins.setInstanceId(retriever.getInstanceId());
+                ins.setDatacenter(envVariables.getRegion());
+                ins.setToken(payLoad);
+                ins.setVolumes(Collections.emptyMap());
+                factory.update(ins);
+                return ins;
             }
             return null;
         }
@@ -243,7 +258,8 @@ public class InstanceIdentity {
                 String payLoad = dead.getToken();
                 logger.info("Trying to grab slot {} with availability zone {}", dead.getId(), dead.getRack());
                 return factory.create(envVariables.getDynomiteClusterName(), dead.getId(), retriever.getInstanceId(),
-                        retriever.getPublicHostname(), retriever.getPublicIP(), retriever.getRac(), dead.getVolumes(),
+                        retriever.getPublicHostname(), commonConfig.getDynomitePort(), commonConfig.getDynomiteSecurePort(),
+                        commonConfig.getDynomiteSecureStoragePort(), commonConfig.getDynomitePeerPort(), retriever.getPublicIP(), retriever.getRac(), dead.getVolumes(),
                         payLoad, envVariables.getRack());
             }
             return null;
@@ -288,8 +304,9 @@ public class InstanceIdentity {
             // config.getDataCenter());
             String payload = tokenManager.createToken(my_slot, rackMembershipSize, envVariables.getRack());
             return factory.create(envVariables.getDynomiteClusterName(), my_slot + hash, retriever.getInstanceId(),
-                    retriever.getPublicHostname(), retriever.getPublicIP(), retriever.getRac(), null, payload,
-                    envVariables.getRack());
+                    retriever.getPublicHostname(), commonConfig.getDynomitePort(), commonConfig.getDynomiteSecurePort(),
+                    commonConfig.getDynomiteSecureStoragePort(), commonConfig.getDynomitePeerPort(), retriever.getPublicIP(), retriever.getRac(), null,
+                    payload, envVariables.getRack());
         }
 
         public void forEachExecution() {
@@ -329,7 +346,7 @@ public class InstanceIdentity {
         for (AppsInstance ins : factory.getAllIds(envVariables.getDynomiteClusterName())) {
             if (!ins.getInstanceId().equals(myInstance.getInstanceId())) {
                 logger.debug("Adding node: " + ins.getInstanceId());
-                seeds.add(ins.getHostName() + ":" + commonConfig.getStoragePeerPort() + ":" + ins.getRack() + ":"
+                seeds.add(ins.getHostName() + ":" + ins.getPeerPort() + ":" + ins.getRack() + ":"
                         + ins.getDatacenter() + ":" + ins.getToken());
             }
         }

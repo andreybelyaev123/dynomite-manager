@@ -30,6 +30,12 @@ public interface CassCommonConfig {
     public String getCassandraClusterName();
 
     /**
+     * @return Name to use for Cassandra's "local datacenter" value
+     */
+    @PropertyName(name = "dyno.sidecore.datacenterName")
+    public String getCassandraDatacenterName();
+
+    /**
      * @return if Eureka is used to find the bootstrap cluster
      */
     @DefaultValue("false")
@@ -41,7 +47,7 @@ public interface CassCommonConfig {
      */
     @DefaultValue("7102")
     @PropertyName(name = "dyno.sidecore.port")
-    public int getCassandraThriftPort();
+    public int getCassandraPort();
 
     @DefaultValue("127.0.0.1")
     @PropertyName(name = "dyno.sidecore.seeds")
@@ -55,5 +61,14 @@ public interface CassCommonConfig {
     @DefaultValue("dyno_bootstrap")
     @PropertyName(name = "metadata.keyspace")
     public String getCassandraKeyspaceName();
+
+    /**
+     * @return the refresh interval in msecs for getting the tokens
+     * 0 value means, do not cache the tokens. Every query to Dynomite-manager
+     * to get tokens will be forwarded to the token store
+     */
+    @DefaultValue("0")
+    @PropertyName(name = "dyno.sidecore.tokenRefreshInterval")
+    public long getTokenRefreshInterval();
 
 }
