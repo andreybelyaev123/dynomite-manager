@@ -43,6 +43,12 @@ public interface CassCommonConfig {
     public boolean isEurekaHostsSupplierEnabled();
 
     /**
+     * @return if Eureka is used to find the bootstrap cluster
+     */
+    @DefaultValue("false")
+    @PropertyName(name = "dyno.sidecore.amazonKeyspaces.enabled")
+    public boolean isAmazonKeyspacesSupplierEnabled();
+    /**
      * @return the port that the bootstrap cluster can be contacted
      */
     @DefaultValue("7102")
