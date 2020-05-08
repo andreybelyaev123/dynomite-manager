@@ -2,6 +2,7 @@ package com.netflix.nfsidecar.tokensdb;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.Row;
+import software.aws.mcs.auth.SigV4AuthProvider;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
 import com.google.inject.Inject;
@@ -16,6 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import javax.net.ssl.SSLContext;
+import java.security.NoSuchAlgorithmException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -416,6 +419,27 @@ public class InstanceDataDAOCassandra {
     }
 
     private CqlSession init() {
+        final String datacenter = !Strings.isNullOrEmpty(cassCommonConfig.getCassandraDatacenterName())
+            ? cassCommonConfig.getCassandraDatacenterName() : commonConfig.getRegion();
+
+        if (cassCommonConfig.isAmazonKeyspacesSupplierEnabled()) {
+            List<InetSocketAddress> contactPoints =
+                Collections.singletonList(
+                    InetSocketAddress.createUnresolved(cassCommonConfig.getCassandraSeeds(), cassCommonConfig.getCassandraPort()));
+            try {
+                return CqlSession.builder()
+                    .addContactPoints(contactPoints)
+                    .withSslContext(SSLContext.getDefault())
+                    .withAuthProvider(new SigV4AuthProvider(datacenter))
+                    .withLocalDatacenter(datacenter)
+                    .withKeyspace(KS_NAME)
+                    .build();
+            }
+            catch (NoSuchAlgorithmException e) {
+                logger.error("Unsupprted algorithm: ", e.getMessage());
+                throw new RuntimeException(e);
+            }
+        }
         final Supplier<List<Host>> supplier;
         if (cassCommonConfig.isEurekaHostsSupplierEnabled()) {
             supplier = this.hostSupplier.getSupplier(BOOT_CLUSTER);
@@ -428,14 +452,11 @@ public class InstanceDataDAOCassandra {
             return new InetSocketAddress(host.getName(), port);
         }).collect(Collectors.toList());
 
-        final String datacenter = !Strings.isNullOrEmpty(cassCommonConfig.getCassandraDatacenterName())
-                ? cassCommonConfig.getCassandraDatacenterName() : commonConfig.getRegion();
-
         return CqlSession.builder()
-                .addContactPoints(contactPoints)
-                .withLocalDatacenter(datacenter)
-                .withKeyspace(KS_NAME)
-                .build();
+            .addContactPoints(contactPoints)
+            .withLocalDatacenter(datacenter)
+            .withKeyspace(KS_NAME)
+            .build();
     }
 
     private Supplier<List<Host>> getSupplier() {
